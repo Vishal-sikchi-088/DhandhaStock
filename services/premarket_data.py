@@ -87,8 +87,8 @@ def get_global_indices():
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="5d")
             if not hist.empty and len(hist) >= 2:
-                last_close = hist["Close"].iloc[-1]
-                prev_close = hist["Close"].iloc[-2]
+                last_close = float(hist["Close"].iloc[-1])
+                prev_close = float(hist["Close"].iloc[-2])
                 change = last_close - prev_close
                 change_pct = (change / prev_close) * 100
                 results.append({
@@ -172,8 +172,8 @@ def get_india_vix():
         vix = yf.Ticker("^INDIAVIX")
         hist = vix.history(period="5d")
         if not hist.empty and len(hist) >= 2:
-            last = hist["Close"].iloc[-1]
-            prev = hist["Close"].iloc[-2]
+            last = float(hist["Close"].iloc[-1])
+            prev = float(hist["Close"].iloc[-2])
             return {
                 "current": round(last, 2),
                 "previous": round(prev, 2),
@@ -194,6 +194,10 @@ def get_usdinr():
         info = ticker.info
         price = info.get("regularMarketPrice")
         prev = info.get("previousClose")
+        if price is not None:
+            price = float(price)
+        if prev is not None:
+            prev = float(prev)
         if price and prev:
             # Sanity check - actual USD/INR is ~83-87
             if 70 < price < 110:
@@ -244,6 +248,7 @@ def get_all_premarket_data():
     historical_daily = get_nifty_historical("6mo", "1d")
     historical_60m = get_nifty_historical("1mo", "60m")
     historical_15m = get_nifty_historical("5d", "15m")
+    historical_5m = get_nifty_historical("5d", "5m")
 
     return {
         "market_status": market_status,
@@ -256,5 +261,6 @@ def get_all_premarket_data():
         "historical_daily": historical_daily,
         "historical_60m": historical_60m,
         "historical_15m": historical_15m,
+        "historical_5m": historical_5m,
         "timestamp": datetime.now().isoformat(),
     }

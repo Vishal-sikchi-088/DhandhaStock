@@ -16,6 +16,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
+from .smc_analysis import analyze_smc
+from .volume_profile_vwap import analyze_vwap_and_profile
+
 
 def calculate_sma(data, period):
     return data.rolling(window=period).mean()
@@ -62,9 +65,9 @@ def find_swing_points(data, window=5):
     swing_lows = []
     for i in range(window, len(data) - window):
         if highs.iloc[i] == highs.iloc[i-window:i+window+1].max():
-            swing_highs.append((i, highs.iloc[i]))
+            swing_highs.append((i, float(highs.iloc[i])))
         if lows.iloc[i] == lows.iloc[i-window:i+window+1].min():
-            swing_lows.append((i, lows.iloc[i]))
+            swing_lows.append((i, float(lows.iloc[i])))
     return swing_highs, swing_lows
 
 
@@ -86,9 +89,9 @@ def detect_double_top(data, swing_highs, tolerance=0.015):
                     return {
                         "pattern": "Double Top",
                         "type": "bearish_reversal",
-                        "confidence": round(max(0, 1 - price_diff * 10) * 100, 1),
-                        "neckline": round(neckline, 2),
-                        "target": round(neckline - height, 2),
+                        "confidence": float(round(max(0, 1 - price_diff * 10) * 100, 1)),
+                        "neckline": float(round(neckline, 2)),
+                        "target": float(round(neckline - height, 2)),
                         "description": f"Two peaks near {high1[1]:.0f} with neckline at {neckline:.0f}. Break below targets {neckline - height:.0f}."
                     }
     return None
@@ -112,9 +115,9 @@ def detect_double_bottom(data, swing_lows, tolerance=0.015):
                     return {
                         "pattern": "Double Bottom",
                         "type": "bullish_reversal",
-                        "confidence": round(max(0, 1 - price_diff * 10) * 100, 1),
-                        "neckline": round(neckline, 2),
-                        "target": round(neckline + height, 2),
+                        "confidence": float(round(max(0, 1 - price_diff * 10) * 100, 1)),
+                        "neckline": float(round(neckline, 2)),
+                        "target": float(round(neckline + height, 2)),
                         "description": f"Two bottoms near {low1[1]:.0f} with neckline at {neckline:.0f}. Break above targets {neckline + height:.0f}."
                     }
     return None
@@ -220,7 +223,7 @@ def find_key_levels(data, swing_highs, swing_lows):
     for idx, price in swing_lows[-5:]:
         levels.append({"price": round(price, 2), "type": "support", "source": "swing_low"})
 
-    last_close = data['Close'].iloc[-1]
+    last_close = float(data['Close'].iloc[-1])
     round_100 = round(last_close / 100) * 100
     levels.append({"price": round_100, "type": "psychological", "source": "round_number"})
     levels.append({"price": round_100 + 100, "type": "psychological", "source": "round_number"})
@@ -230,9 +233,9 @@ def find_key_levels(data, swing_highs, swing_lows):
     sma50 = calculate_sma(data['Close'], 50).iloc[-1]
     sma200 = calculate_sma(data['Close'], 200).iloc[-1]
 
-    if not math.isnan(sma20): levels.append({"price": round(sma20, 2), "type": "dynamic", "source": "SMA20"})
-    if not math.isnan(sma50): levels.append({"price": round(sma50, 2), "type": "dynamic", "source": "SMA50"})
-    if not math.isnan(sma200): levels.append({"price": round(sma200, 2), "type": "dynamic", "source": "SMA200"})
+    if not math.isnan(sma20): levels.append({"price": float(round(sma20, 2)), "type": "dynamic", "source": "SMA20"})
+    if not math.isnan(sma50): levels.append({"price": float(round(sma50, 2)), "type": "dynamic", "source": "SMA50"})
+    if not math.isnan(sma200): levels.append({"price": float(round(sma200, 2)), "type": "dynamic", "source": "SMA200"})
 
     filtered = []
     for level in sorted(levels, key=lambda x: x["price"]):
@@ -265,11 +268,11 @@ def analyze_single_timeframe(data, label="daily"):
     macd_line, signal_line, histogram = calculate_macd(data['Close'])
     atr = calculate_atr(data, 14)
 
-    current_rsi = rsi.iloc[-1] if not rsi.empty else 50
-    current_macd = macd_line.iloc[-1] if not macd_line.empty else 0
-    current_signal = signal_line.iloc[-1] if not signal_line.empty else 0
-    current_hist = histogram.iloc[-1] if not histogram.empty else 0
-    current_atr = atr.iloc[-1] if not atr.empty else 0
+    current_rsi = float(rsi.iloc[-1]) if not rsi.empty else 50
+    current_macd = float(macd_line.iloc[-1]) if not macd_line.empty else 0
+    current_signal = float(signal_line.iloc[-1]) if not signal_line.empty else 0
+    current_hist = float(histogram.iloc[-1]) if not histogram.empty else 0
+    current_atr = float(atr.iloc[-1]) if not atr.empty else 0
 
     swing_highs, swing_lows = find_swing_points(data, window=3)
     trend = analyze_trend_structure(data)
@@ -296,10 +299,10 @@ def analyze_single_timeframe(data, label="daily"):
     return {
         "timeframe": label,
         "last_close": round(last_close, 2),
-        "sma20": round(sma20.iloc[-1], 2) if not math.isnan(sma20.iloc[-1]) else None,
-        "sma50": round(sma50.iloc[-1], 2) if not math.isnan(sma50.iloc[-1]) else None,
-        "sma200": round(sma200.iloc[-1], 2) if not math.isnan(sma200.iloc[-1]) else None,
-        "ema20": round(ema20.iloc[-1], 2) if not math.isnan(ema20.iloc[-1]) else None,
+        "sma20": float(round(sma20.iloc[-1], 2)) if not math.isnan(sma20.iloc[-1]) else None,
+        "sma50": float(round(sma50.iloc[-1], 2)) if not math.isnan(sma50.iloc[-1]) else None,
+        "sma200": float(round(sma200.iloc[-1], 2)) if not math.isnan(sma200.iloc[-1]) else None,
+        "ema20": float(round(ema20.iloc[-1], 2)) if not math.isnan(ema20.iloc[-1]) else None,
         "rsi": round(current_rsi, 1),
         "macd": round(current_macd, 2),
         "macd_signal": round(current_signal, 2),
@@ -313,7 +316,7 @@ def analyze_single_timeframe(data, label="daily"):
     }
 
 
-def analyze_chart(historical_df_daily, historical_df_60m=None, historical_df_15m=None):
+def analyze_chart(historical_df_daily, historical_df_60m=None, historical_df_15m=None, historical_df_5m=None):
     """
     Main chart analysis function — multi-timeframe.
     Returns comprehensive technical analysis dict.
@@ -321,17 +324,31 @@ def analyze_chart(historical_df_daily, historical_df_60m=None, historical_df_15m
     daily = analyze_single_timeframe(historical_df_daily, "daily") if historical_df_daily is not None else None
     tf_60m = analyze_single_timeframe(historical_df_60m, "60min") if historical_df_60m is not None else None
     tf_15m = analyze_single_timeframe(historical_df_15m, "15min") if historical_df_15m is not None else None
+    tf_5m = analyze_single_timeframe(historical_df_5m, "5min") if historical_df_5m is not None else None
+
+    # SMC Analysis on 5m data
+    smc = analyze_smc(historical_df_5m) if historical_df_5m is not None else None
+    
+    # VWAP & Volume Profile on 5m data
+    vwap_profile = analyze_vwap_and_profile(historical_df_5m, historical_df_daily) if historical_df_5m is not None else None
 
     # Multi-timeframe alignment
     daily_trend = daily.get("trend_structure", {}).get("trend", "sideways") if daily else "sideways"
     tf60_trend = tf_60m.get("trend_structure", {}).get("trend", "sideways") if tf_60m else "sideways"
     tf15_trend = tf_15m.get("trend_structure", {}).get("trend", "sideways") if tf_15m else "sideways"
+    tf5_trend = tf_5m.get("trend_structure", {}).get("trend", "sideways") if tf_5m else "sideways"
 
     alignment = "mixed"
     if "uptrend" in daily_trend and "uptrend" in tf60_trend:
-        alignment = "bullish_aligned"
+        if "uptrend" in tf15_trend or "uptrend" in tf5_trend:
+            alignment = "bullish_aligned"
+        else:
+            alignment = "bullish_mixed"
     elif "downtrend" in daily_trend and "downtrend" in tf60_trend:
-        alignment = "bearish_aligned"
+        if "downtrend" in tf15_trend or "downtrend" in tf5_trend:
+            alignment = "bearish_aligned"
+        else:
+            alignment = "bearish_mixed"
     elif daily_trend == "sideways" and tf60_trend == "sideways":
         alignment = "sideways_aligned"
 
@@ -342,8 +359,8 @@ def analyze_chart(historical_df_daily, historical_df_60m=None, historical_df_15m
     all_levels = daily.get("key_levels", []) if daily else []
 
     # Volume analysis from daily
-    avg_volume = historical_df_daily['Volume'].tail(20).mean() if historical_df_daily is not None else 0
-    last_volume = historical_df_daily['Volume'].iloc[-1] if historical_df_daily is not None else 0
+    avg_volume = float(historical_df_daily['Volume'].tail(20).mean()) if historical_df_daily is not None else 0
+    last_volume = float(historical_df_daily['Volume'].iloc[-1]) if historical_df_daily is not None else 0
     volume_vs_avg = (last_volume / avg_volume - 1) * 100 if avg_volume > 0 else 0
 
     # Determine primary bias from all timeframes
@@ -368,13 +385,67 @@ def analyze_chart(historical_df_daily, historical_df_60m=None, historical_df_15m
         else:
             reasons.append("Daily trend sideways")
 
-        # 60m alignment
+        # Multi-timeframe alignment
         if "uptrend" in tf60_trend and "uptrend" in daily_trend:
             bias_score += 1
             reasons.append("60min aligns with daily bullish")
         elif "downtrend" in tf60_trend and "downtrend" in daily_trend:
             bias_score -= 1
             reasons.append("60min aligns with daily bearish")
+        
+        # 15m and 5m contribution
+        if "uptrend" in tf15_trend and "uptrend" in daily_trend:
+            bias_score += 1
+            reasons.append("15min aligns with daily bullish")
+        elif "downtrend" in tf15_trend and "downtrend" in daily_trend:
+            bias_score -= 1
+            reasons.append("15min aligns with daily bearish")
+        
+        if "uptrend" in tf5_trend and "uptrend" in daily_trend:
+            bias_score += 0.5
+            reasons.append("5min aligns with daily bullish")
+        elif "downtrend" in tf5_trend and "downtrend" in daily_trend:
+            bias_score -= 0.5
+            reasons.append("5min aligns with daily bearish")
+        
+        # SMC contribution
+        if smc:
+            smc_bias = smc.get("bias", "neutral")
+            if smc_bias == "bullish":
+                bias_score += 1.5
+                reasons.append("SMC structure bullish")
+            elif smc_bias == "bearish":
+                bias_score -= 1.5
+                reasons.append("SMC structure bearish")
+            
+            if smc.get("last_bos"):
+                bos = smc["last_bos"]
+                if bos["direction"] == "bullish":
+                    bias_score += 1
+                    reasons.append(f"SMC BOS bullish at {bos['level']}")
+                else:
+                    bias_score -= 1
+                    reasons.append(f"SMC BOS bearish at {bos['level']}")
+            
+            if smc.get("last_choch"):
+                choch = smc["last_choch"]
+                if choch["direction"] == "bullish":
+                    bias_score += 1.5
+                    reasons.append(f"SMC CHoCH bullish at {choch['level']}")
+                else:
+                    bias_score -= 1.5
+                    reasons.append(f"SMC CHoCH bearish at {choch['level']}")
+        
+        # VWAP contribution
+        if vwap_profile and vwap_profile.get("vwap"):
+            vwap_pos = vwap_profile["vwap"]["position"]
+            vwap_dev = vwap_profile["vwap"]["deviation"]
+            if vwap_pos == "above" and vwap_dev > 0.5:
+                bias_score += 0.5
+                reasons.append(f"Price above VWAP ({vwap_dev:.1f}σ)")
+            elif vwap_pos == "below" and vwap_dev < -0.5:
+                bias_score -= 0.5
+                reasons.append(f"Price below VWAP ({vwap_dev:.1f}σ)")
 
         # MA contribution
         last_close = daily["last_close"]
@@ -446,6 +517,9 @@ def analyze_chart(historical_df_daily, historical_df_60m=None, historical_df_15m
         "daily": daily,
         "tf_60min": tf_60m,
         "tf_15min": tf_15m,
+        "tf_5min": tf_5m,
+        "smc": smc,
+        "vwap_profile": vwap_profile,
         "multi_timeframe_alignment": alignment,
         "patterns": all_patterns,
         "key_levels": all_levels,

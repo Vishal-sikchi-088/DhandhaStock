@@ -77,6 +77,73 @@ def init_db():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS active_trades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'active',
+            instrument_type TEXT NOT NULL,
+            trade_type TEXT NOT NULL,
+            strike REAL,
+            expiry TEXT,
+            entry REAL NOT NULL,
+            stop_loss REAL NOT NULL,
+            target1 REAL NOT NULL,
+            target2 REAL,
+            target3 REAL,
+            quantity INTEGER NOT NULL,
+            risk_reward TEXT,
+            estimated_probability TEXT,
+            strategy TEXT,
+            market_bias TEXT,
+            confidence_score REAL,
+            trade_quality_score REAL,
+            current_pnl REAL DEFAULT 0,
+            current_spot REAL,
+            current_premium REAL,
+            action TEXT DEFAULT 'HOLD',
+            action_reason TEXT,
+            exited_at TIMESTAMP,
+            exit_reason TEXT,
+            final_pnl REAL
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS trade_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trade_id INTEGER,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            spot REAL,
+            premium REAL,
+            pnl REAL,
+            action TEXT,
+            reason TEXT,
+            oi_change_data TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS oi_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            spot REAL,
+            futures REAL,
+            strike_data TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS futures_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_price REAL,
+            oi REAL,
+            volume REAL
+        )
+    """)
+
+    cursor.execute("""
         INSERT OR IGNORE INTO settings (id, capital, max_risk_percent)
         VALUES (1, 100000, 2.0)
     """)
@@ -198,6 +265,115 @@ def get_iv_history(limit=252):
     cursor.execute("""
         SELECT * FROM iv_history ORDER BY timestamp DESC LIMIT ?
     """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+# ---- Active Trades ----
+
+def create_active_trade(trade_data):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO active_trades (
+            instrument_type, trade_type, strike, expiry, entry, stop_loss,
+            target1, target2, target3, quantity, risk_reward, estimated_probability,
+            strategy, market_bias, confidence_score, trade_quality_score,
+            current_pnl, action, action_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        trade_data.get("instrument_type", "NIFTY"),
+        trade_data.get("trade_type", ""),
+        trade_data.get("strike"),
+        trade_data.get("expiry"),
+        trade_data["entry"],
+        trade_data["stop_loss"],
+        trade_data.get("target1"),
+        trade_data.get("target2"),
+        trade_data.get("target3"),
+        trade_data["quantity"],
+        trade_data.get("risk_reward"),
+        trade_data.get("estimated_probability"),
+        trade_data.get("strategy"),
+        trade_data.get("market_bias"),
+        trade_data.get("confidence_score"),
+        trade_data.get("trade_quality_score"),
+        0,
+        "HOLD",
+        "Trade initialized"
+    ))
+    trade_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return trade_id
+
+
+def get_active_trades():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM active_trades WHERE status = 'active' ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def update_active_trade(trade_id, updates):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    allowed_fields = [
+        "status", "current_pnl", "current_spot", "current_premium",
+        "action", "action_reason", "exit_reason", "final_pnl"
+    ]
+    
+    set_clauses = []
+    values = []
+    for field in allowed_fields:
+        if field in updates:
+            set_clauses.append(f"{field} = ?")
+            values.append(updates[field])
+    
+    if not set_clauses:
+        conn.close()
+        return
+    
+    set_clauses.append("updated_at = CURRENT_TIMESTAMP")
+    
+    if updates.get("status") in ["closed", "exited"]:
+        set_clauses.append("exited_at = CURRENT_TIMESTAMP")
+    
+    query = f"UPDATE active_trades SET {', '.join(set_clauses)} WHERE id = ?"
+    values.append(trade_id)
+    
+    cursor.execute(query, values)
+    conn.commit()
+    conn.close()
+
+
+def save_trade_log(trade_id, log_data):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO trade_logs (trade_id, spot, premium, pnl, action, reason, oi_change_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        trade_id,
+        log_data.get("spot"),
+        log_data.get("premium"),
+        log_data.get("pnl"),
+        log_data.get("action"),
+        log_data.get("reason"),
+        json.dumps(log_data.get("oi_change_data", {}))
+    ))
+    conn.commit()
+    conn.close()
+
+
+def get_trade_logs(trade_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM trade_logs WHERE trade_id = ? ORDER BY timestamp DESC", (trade_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
