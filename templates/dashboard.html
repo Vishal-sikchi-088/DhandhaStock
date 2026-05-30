@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Market Status Banner -->
+    <div class="market-status-banner" id="marketStatusBanner">
+        <span id="marketStatusText">Checking market status...</span>
+    </div>
+
+    <!-- Top Stats Bar -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat">
+            <span class="stat-label">Spot (Last)</span>
+            <span class="stat-value" id="spotPrice">--</span>
+            <span class="stat-change" id="spotChange">--</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Futures / Est.</span>
+            <span class="stat-value" id="futuresPrice">--</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">VIX</span>
+            <span class="stat-value" id="vixValue">--</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">PCR</span>
+            <span class="stat-value" id="pcrValue">--</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Max Pain</span>
+            <span class="stat-value" id="maxPainValue">--</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">DTE</span>
+            <span class="stat-value" id="dteValue">--</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Confidence</span>
+            <span class="stat-value" id="confidenceBadgeTop">--</span>
+        </div>
+    </div>
+
+    <!-- AI Narrative Panel -->
+    <div class="panel narrative-panel" id="narrativePanel" style="display:none;">
+        <div class="panel-header"><h2>AI Pre-Market Narrative</h2></div>
+        <div class="panel-body"><pre class="narrative-text" id="narrativeText"></pre></div>
+    </div>
+
+    <!-- ===== MAIN 3-COLUMN GRID ===== -->
+    <div class="grid-3">
+        <!-- LEFT COLUMN: Global + Trend + Chart -->
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <!-- Global Cues -->
+            <div class="panel global-panel" id="globalPanel">
+                <div class="panel-header"><h2>Global Cues</h2></div>
+                <div class="panel-body">
+                    <div class="global-grid" id="globalGrid"><div class="global-card">Loading...</div></div>
+                </div>
+            </div>
+
+            <!-- Trend Panel -->
+            <div class="panel trend-panel" id="trendPanel">
+                <div class="panel-header">
+                    <h2>Market Trend</h2>
+                    <span class="badge" id="trendBadge">--</span>
+                </div>
+                <div class="panel-body">
+                    <div class="trend-strength">
+                        <div class="strength-bar-bg"><div class="strength-bar-fill" id="strengthBar" style="width: 0%"></div></div>
+                        <span class="strength-text" id="strengthText">Strength: --/10</span>
+                    </div>
+                    <p class="trend-reason" id="trendReason">Loading...</p>
+                    <div class="trend-levels">
+                        <div class="level-box support"><span class="level-label">Support</span><span class="level-value" id="supportValue">--</span></div>
+                        <div class="level-box resistance"><span class="level-label">Resistance</span><span class="level-value" id="resistanceValue">--</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Analysis Panel -->
+            <div class="panel chart-panel" id="chartPanel">
+                <div class="panel-header">
+                    <h2>Chart Analysis</h2>
+                    <span class="badge" id="chartBiasBadge">--</span>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-stats" id="chartStats">
+                        <div class="chart-stat"><span class="chart-stat-label">RSI (14)</span><span class="chart-stat-value" id="rsiValue">--</span></div>
+                        <div class="chart-stat"><span class="chart-stat-label">SMA 20</span><span class="chart-stat-value" id="sma20Value">--</span></div>
+                        <div class="chart-stat"><span class="chart-stat-label">SMA 50</span><span class="chart-stat-value" id="sma50Value">--</span></div>
+                        <div class="chart-stat"><span class="chart-stat-label">SMA 200</span><span class="chart-stat-value" id="sma200Value">--</span></div>
+                        <div class="chart-stat"><span class="chart-stat-label">MACD</span><span class="chart-stat-value" id="macdValue">--</span></div>
+                        <div class="chart-stat"><span class="chart-stat-label">ATR (14)</span><span class="chart-stat-value" id="atrValue">--</span></div>
+                    </div>
+                    <div class="patterns-box" id="patternsBox">
+                        <h4>Patterns</h4>
+                        <div class="patterns-list" id="patternsList">Loading...</div>
+                    </div>
+                    <div class="levels-box" id="levelsBox">
+                        <h4>Key Levels</h4>
+                        <div class="levels-list" id="levelsList">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER COLUMN: Option Chain -->
+        <div class="panel chain-panel" style="display:flex;flex-direction:column;">
+            <div class="panel-header">
+                <h2>Option Chain</h2>
+                <span class="badge atm-badge" id="atmBadge">ATM: --</span>
+            </div>
+            <div class="panel-body" style="padding:0.3rem;">
+                <div class="table-scroll">
+                    <table class="option-table" id="optionTable">
+                        <thead>
+                            <tr>
+                                <th colspan="5" class="header-ce">CALLS (CE)</th>
+                                <th class="header-strike">Strike</th>
+                                <th colspan="5" class="header-pe">PUTS (PE)</th>
+                            </tr>
+                            <tr>
+                                <th>OI</th><th>Chg OI</th><th>Vol</th><th>IV</th><th>Prem</th>
+                                <th class="strike-col"></th>
+                                <th>Prem</th><th>IV</th><th>Vol</th><th>Chg OI</th><th>OI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="optionTableBody"><tr><td colspan="11" class="text-center">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="chain-note" id="chainNote" style="display:none;">
+                    Option chain unavailable — market closed. Using pre-market cues.
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Trade Setup + Checklist + Layer 1 -->
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <!-- AI Trade Panel -->
+            <div class="panel trade-panel" id="tradePanel">
+                <div class="panel-header">
+                    <h2>Trade Setup</h2>
+                    <span class="badge confidence" id="confidenceBadge">--</span>
+                </div>
+                <div class="panel-body">
+                    <div id="tradeContent">
+                        <div class="trade-instrument" id="tradeInstrument">--</div>
+                        <div class="trade-details" id="tradeDetails">
+                            <div class="trade-row"><span class="trade-label">Direction</span><span class="trade-value" id="tradeDirection">--</span></div>
+                            <div class="trade-row"><span class="trade-label">Entry</span><span class="trade-value" id="tradeEntry">--</span></div>
+                            <div class="trade-row"><span class="trade-label">Stop Loss</span><span class="trade-value danger" id="tradeStop">--</span></div>
+                            <div class="trade-row"><span class="trade-label">Target 1</span><span class="trade-value success" id="tradeTarget1">--</span></div>
+                            <div class="trade-row"><span class="trade-label">Target 2</span><span class="trade-value success" id="tradeTarget2">--</span></div>
+                            <div class="trade-row"><span class="trade-label">Qty</span><span class="trade-value" id="tradeQuantity">--</span></div>
+                            <div class="trade-row"><span class="trade-label">R:R</span><span class="trade-value" id="tradeRR">--</span></div>
+                            <div class="trade-row"><span class="trade-label">Prob</span><span class="trade-value" id="tradeProb">--</span></div>
+                            <div class="trade-row" id="orderTypeRow" style="display:none;">
+                                <span class="trade-label">Order</span><span class="trade-value" id="tradeOrderType">--</span>
+                            </div>
+                            <div class="trade-row" id="sessionRow" style="display:none;">
+                                <span class="trade-label">Session</span><span class="trade-value" id="tradeSession">--</span>
+                            </div>
+                        </div>
+                        <div class="trade-explanation" id="tradeExplanation"></div>
+                        <div class="trade-invalidation" id="tradeInvalidation"></div>
+                        <div class="hedging-note" id="hedgingNote" style="display:none;"></div>
+                        <button class="btn-save-trade" id="btnSaveTrade" style="display:none;">Save Trade</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7-Step Checklist Panel -->
+            <div class="panel checklist-panel" id="checklistPanel">
+                <div class="panel-header">
+                    <h2>Decision Checklist</h2>
+                    <span class="badge" id="checklistScore">--</span>
+                </div>
+                <div class="panel-body">
+                    <div class="checklist-grid" id="checklistGrid">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Layer 1: Market Direction -->
+            <div class="panel layer-panel" id="layer1Panel">
+                <div class="panel-header">
+                    <h2>Layer 1: Market Direction</h2>
+                    <span class="badge" id="layer1Badge">--</span>
+                </div>
+                <div class="panel-body">
+                    <div class="layer-stats" id="layer1Stats"></div>
+                    <div class="layer-details" id="layer1Details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== BOTTOM ROW: Reasons + Risk + News ===== -->
+    <div class="grid-2">
+        <!-- Reasons & Risk Panel -->
+        <div class="panel" style="display:flex;flex-direction:column;">
+            <div class="panel-header"><h2>Why This Setup</h2></div>
+            <div class="panel-body">
+                <ul class="reason-list" id="reasonList"><li>Loading...</li></ul>
+                <div class="invalidation-box">
+                    <h4>What Could Go Wrong</h4>
+                    <ul class="invalidation-list" id="invalidationList"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="panel" style="display:flex;flex-direction:column;">
+            <div class="panel-header"><h2>Risk Factors</h2></div>
+            <div class="panel-body">
+                <ul class="risk-list" id="riskList"><li>Loading...</li></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- News Panel -->
+    <div class="panel news-panel">
+        <div class="panel-header"><h2>Market News & Events</h2></div>
+        <div class="panel-body"><ul class="news-list" id="newsList"><li>Loading...</li></ul></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

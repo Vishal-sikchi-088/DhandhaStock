@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nifty 50 Analysis Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">N</span>
+            <span class="brand-text">Nifty 50 Analysis</span>
+        </div>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">☰</button>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="/history" class="{% if request.path == '/history' %}active{% endif %}">Trade History</a></li>
+            <li><a href="/settings" class="{% if request.path == '/settings' %}active{% endif %}">Settings</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="sebi-warning">
+            <strong>SEBI Warning:</strong> 93% of individual F&O traders lost money in FY22–FY24. 
+            This app is a research and risk-control assistant only. It does not guarantee profits or provide investment advice. 
+            Trading in derivatives carries substantial risk of loss.
+        </div>
+        <div class="footer-note">
+            Data is simulated for demonstration. For live trading, integrate with NSE/BSE APIs or broker terminals.
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('navToggle').addEventListener('click', function() {
+            document.getElementById('navLinks').classList.toggle('show');
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

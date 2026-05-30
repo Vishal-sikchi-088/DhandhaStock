@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Trade History - Nifty 50 Analysis{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Trade History</h1>
+    <p class="subtitle">Review past trade ideas, market conditions, and outcomes.</p>
+</div>
+
+<div class="panel">
+    <div class="panel-body">
+        <div class="table-scroll">
+            <table class="history-table" id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>Instrument</th>
+                        <th>Direction</th>
+                        <th>Entry</th>
+                        <th>Stop</th>
+                        <th>Target 1</th>
+                        <th>Qty</th>
+                        <th>R:R</th>
+                        <th>Confidence</th>
+                        <th>Trend</th>
+                        <th>Status</th>
+                        <th>P&L</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr><td colspan="12" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="panel stats-panel">
+    <div class="panel-header"><h2>Performance Summary</h2></div>
+    <div class="panel-body">
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card">
+                <span class="summary-label">Total Trades</span>
+                <span class="summary-value" id="totalTrades">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Win Rate</span>
+                <span class="summary-value" id="winRate">0%</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Avg R:R</span>
+                <span class="summary-value" id="avgRR">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">Avg Confidence</span>
+                <span class="summary-value" id="avgConf">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/trades');
+        const trades = await res.json();
+        const tbody = document.getElementById('historyBody');
+        
+        if (trades.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12" class="text-center">No trades recorded yet.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        let wins = 0, total = 0, rrSum = 0, confSum = 0;
+        
+        trades.forEach(t => {
+            total++;
+            const ts = new Date(t.timestamp).toLocaleString('en-IN');
+            const statusClass = t.status === 'win' ? 'status-win' : t.status === 'loss' ? 'status-loss' : 'status-open';
+            const pnlClass = t.pnl > 0 ? 'success' : t.pnl < 0 ? 'danger' : '';
+            if (t.pnl > 0) wins++;
+            
+            // Parse RR
+            let rr = 0;
+            if (t.risk_reward && t.risk_reward.includes(':')) {
+                const parts = t.risk_reward.split(':');
+                if (parts[1]) rr = parseFloat(parts[1].split('/')[0]) || 0;
+            }
+            rrSum += rr;
+            confSum += t.confidence_score || 0;
+
+            html += `<tr>
+                <td>${ts}</td>
+                <td>${t.instrument_type}</td>
+                <td>${t.direction}</td>
+                <td>${t.entry}</td>
+                <td>${t.stop_loss}</td>
+                <td>${t.target1}</td>
+                <td>${t.quantity}</td>
+                <td>${t.risk_reward || '-'}</td>
+                <td>${t.confidence_label || '-'} (${t.confidence_score || 0})</td>
+                <td>${t.market_trend || '-'}</td>
+                <td><span class="status-badge ${statusClass}">${t.status}</span></td>
+                <td class="${pnlClass}">${t.pnl !== null ? t.pnl : '-'}</td>
+            </tr>`;
+        });
+        
+        tbody.innerHTML = html;
+        document.getElementById('totalTrades').textContent = total;
+        document.getElementById('winRate').textContent = total > 0 ? Math.round((wins/total)*100) + '%' : '0%';
+        document.getElementById('avgRR').textContent = total > 0 ? (rrSum/total).toFixed(2) : '0';
+        document.getElementById('avgConf').textContent = total > 0 ? (confSum/total).toFixed(1) : '0';
+    } catch (e) {
+        console.error(e);
+        document.getElementById('historyBody').innerHTML = '<tr><td colspan="12" class="text-center error">Failed to load history.</td></tr>';
+    }
+}
+
+loadHistory();
+</script>
+{% endblock %}

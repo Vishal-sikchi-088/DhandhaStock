@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Nifty 50 Analysis{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Settings</h1>
+    <p class="subtitle">Configure your capital, risk limits, and preferences.</p>
+</div>
+
+<div class="panel">
+    <div class="panel-body">
+        <form id="settingsForm" class="settings-form">
+            <div class="form-group">
+                <label for="capital">Trading Capital (₹)</label>
+                <input type="number" id="capital" name="capital" min="10000" step="1000" required>
+                <small>Total capital you have allocated for trading.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="max_risk_percent">Max Risk Per Trade (%)</label>
+                <input type="number" id="max_risk_percent" name="max_risk_percent" min="0.1" max="10" step="0.1" required>
+                <small>Maximum percentage of capital you are willing to risk on a single trade. Recommended: 1-2%.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="max_loss_per_day">Max Loss Per Day (₹)</label>
+                <input type="number" id="max_loss_per_day" name="max_loss_per_day" min="0" step="500" required>
+                <small>Daily loss limit to stop trading for the day.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="preferred_instrument">Preferred Instrument</label>
+                <select id="preferred_instrument" name="preferred_instrument">
+                    <option value="futures">Nifty Futures</option>
+                    <option value="options">Nifty Options</option>
+                    <option value="both">No Preference</option>
+                </select>
+            </div>
+            
+            
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="enable_news_check" name="enable_news_check" checked>
+                    Enable News/Event Risk Check
+                </label>
+                <small>The system will scan for high-impact news and reduce trade confidence when events are detected.</small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Save Settings</button>
+            </div>
+        </form>
+        
+        <div id="settingsMessage" class="settings-message"></div>
+    </div>
+</div>
+
+<div class="panel info-panel">
+    <div class="panel-header"><h2>Risk Management Guide</h2></div>
+    <div class="panel-body">
+        <ul class="info-list">
+            <li><strong>Capital:</strong> Only trade with money you can afford to lose completely.</li>
+            <li><strong>Per-Trade Risk:</strong> Risking 1-2% per trade means you can survive 50-100 consecutive losses.</li>
+            <li><strong>Daily Loss Limit:</strong> When hit, stop trading. Emotional trading after losses increases risk.</li>
+            <li><strong>Position Sizing:</strong> The system calculates quantity so your stop-loss hits within your risk limit.</li>
+            <li><strong>No Guarantee:</strong> The "estimated probability" is a heuristic score, not a guarantee of outcome.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadSettings() {
+    const res = await fetch('/api/settings');
+    const settings = await res.json();
+    document.getElementById('capital').value = settings.capital || 100000;
+    document.getElementById('max_risk_percent').value = settings.max_risk_percent || 2.0;
+    document.getElementById('max_loss_per_day').value = settings.max_loss_per_day || 5000;
+    document.getElementById('preferred_instrument').value = settings.preferred_instrument || 'futures';
+    document.getElementById('enable_news_check').checked = settings.enable_news_check !== 0;
+}
+
+document.getElementById('settingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = {
+        capital: parseFloat(document.getElementById('capital').value),
+        max_risk_percent: parseFloat(document.getElementById('max_risk_percent').value),
+        max_loss_per_day: parseFloat(document.getElementById('max_loss_per_day').value),
+        preferred_instrument: document.getElementById('preferred_instrument').value,
+        enable_news_check: document.getElementById('enable_news_check').checked
+    };
+    
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        const msg = document.getElementById('settingsMessage');
+        msg.textContent = result.success ? 'Settings saved successfully.' : 'Failed to save settings.';
+        msg.className = 'settings-message ' + (result.success ? 'success' : 'error');
+    } catch (e) {
+        console.error(e);
+    }
+});
+
+loadSettings();
+</script>
+{% endblock %}
