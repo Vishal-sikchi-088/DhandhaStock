@@ -58,7 +58,15 @@ async function fetchMarketSummary() {
         }
 
         const chainNote = document.getElementById('chainNote');
-        chainNote.style.display = data.market_open ? 'none' : 'block';
+        if (!data.market_open) {
+            chainNote.textContent = 'Option chain unavailable — market closed.';
+            chainNote.style.display = 'block';
+        } else if (data.data_source === 'NSE_API_LIMITED') {
+            chainNote.textContent = 'Option chain unavailable — NSE deprecated public API. Integrate broker API for live OI data.';
+            chainNote.style.display = 'block';
+        } else {
+            chainNote.style.display = 'none';
+        }
 
         updateLastUpdated();
         return data;
@@ -267,11 +275,12 @@ async function fetchDeepOI() {
         const res = await fetch('/api/deep-oi');
         const data = await res.json();
         if (data.error || !data.market_open) {
-            setPill('oiPill', 'CLOSED', 'neutral');
+            const reason = data.nse_api_limited ? 'NSE API deprecated' : 'Market closed';
+            setPill('oiPill', 'N/A', 'neutral');
             document.getElementById('oiBias').textContent = '--';
             document.getElementById('oiSupportWall').textContent = '--';
             document.getElementById('oiResistanceWall').textContent = '--';
-            document.getElementById('oiBuildupList').innerHTML = '<div class="oi-buildup-item">Market closed</div>';
+            document.getElementById('oiBuildupList').innerHTML = `<div class="oi-buildup-item">${reason} — OI data unavailable</div>`;
             return;
         }
 

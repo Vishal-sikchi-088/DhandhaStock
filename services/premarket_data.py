@@ -1,7 +1,21 @@
 """
 Pre-Market Data Service
 Fetches market status, Nifty 50 summary, global indices, macro data,
-and pre-market cues for analysis when NSE option chain is unavailable.
+and pre-market cues for analysis.
+
+NOTE (Jun 2026): NSE India deprecated several public API endpoints:
+- /api/equity-stockIndices (returns 404)
+- /api/quote-derivative (returns 404)
+- /api/option-chain-indices (returns 404)
+
+Working NSE endpoints used:
+- /api/marketStatus
+- /api/allIndices
+- /api/fiidiiTradeReact
+- /api/chart-databyindex
+
+For option chain and futures, the app falls back to Yahoo Finance
+spot price + estimates when NSE APIs are unavailable.
 """
 
 import yfinance as yf
@@ -21,46 +35,68 @@ def _get_nse_session():
 
 
 def get_nse_market_status():
-    """Fetch NSE market status and Nifty 50 summary."""
+    """Fetch NSE market status and Nifty 50 summary from working endpoints."""
     try:
         session = _get_nse_session()
-        url = f"{NSE_BASE}/api/equity-stockIndices?index=NIFTY%2050"
+
+        # Use the working marketStatus endpoint
+        url = f"{NSE_BASE}/api/marketStatus"
         resp = session.get(url, timeout=15)
         resp.raise_for_status()
         data = resp.json()
 
-        market_status = data.get("marketStatus", {})
-        metadata = data.get("metadata", {})
-        index_data = data.get("data", [])
-
-        nifty_info = None
-        for item in index_data:
-            if item.get("symbol") == "NIFTY 50":
-                nifty_info = item
+        market_states = data.get("marketState", [])
+        capital_market = None
+        for m in market_states:
+            if m.get("market") == "Capital Market":
+                capital_market = m
                 break
 
-        if nifty_info is None:
-            nifty_info = metadata
+        if capital_market is None and market_states:
+            capital_market = market_states[0]
+
+        # Also fetch allIndices for additional Nifty 50 data
+        nifty_detail = {}
+        try:
+            resp2 = session.get(f"{NSE_BASE}/api/allIndices", timeout=15)
+            if resp2.status_code == 200:
+                indices = resp2.json()
+                for idx in indices.get("data", []):
+                    if idx.get("index") == "NIFTY 50":
+                        nifty_detail = idx
+                        break
+        except Exception:
+            pass
+
+        last = capital_market.get("last", 0) or nifty_detail.get("last", 0)
+        prev = nifty_detail.get("previousClose", 0)
+        change = capital_market.get("variation", 0) or (last - prev if last and prev else 0)
+        change_pct = capital_market.get("percentChange", 0) or ((change / prev) * 100 if prev else 0)
 
         return {
-            "is_open": market_status.get("marketStatus", "Close").upper() == "OPEN",
-            "market_message": market_status.get("marketStatusMessage", "Unknown"),
-            "trade_date": market_status.get("tradeDate", ""),
-            "last_price": nifty_info.get("lastPrice") or metadata.get("last", 0),
-            "previous_close": nifty_info.get("previousClose") or metadata.get("previousClose", 0),
-            "open": nifty_info.get("open") or metadata.get("open", 0),
-            "day_high": nifty_info.get("dayHigh") or metadata.get("high", 0),
-            "day_low": nifty_info.get("dayLow") or metadata.get("low", 0),
-            "change": nifty_info.get("change") or metadata.get("change", 0),
-            "change_percent": nifty_info.get("pChange") or metadata.get("percChange", 0),
-            "volume": nifty_info.get("totalTradedVolume") or metadata.get("totalTradedVolume", 0),
-            "value": nifty_info.get("totalTradedValue") or metadata.get("totalTradedValue", 0),
-            "year_high": nifty_info.get("yearHigh") or metadata.get("yearHigh", 0),
-            "year_low": nifty_info.get("yearLow") or metadata.get("yearLow", 0),
-            "near_52w_high": nifty_info.get("nearWKH", 0),
-            "near_52w_low": nifty_info.get("nearWKL", 0),
-            "per_change_30d": nifty_info.get("perChange30d") or metadata.get("perChange30d", 0),
-            "per_change_365d": nifty_info.get("perChange365d") or metadata.get("perChange365d", 0),
+            "is_open": (capital_market.get("marketStatus", "") or "").upper() == "OPEN",
+            "market_message": capital_market.get("marketStatusMessage", "Unknown"),
+            "trade_date": capital_market.get("tradeDate", ""),
+            "last_price": last,
+            "previous_close": prev,
+            "open": nifty_detail.get("open", 0),
+            "day_high": nifty_detail.get("high", 0),
+            "day_low": nifty_detail.get("low", 0),
+            "change": change,
+            "change_percent": change_pct,
+            "volume": nifty_detail.get("totalTradedVolume", 0),
+            "value": 0,
+            "year_high": nifty_detail.get("yearHigh", 0),
+            "year_low": nifty_detail.get("yearLow", 0),
+            "near_52w_high": nifty_detail.get("nearWKH", 0),
+            "near_52w_low": nifty_detail.get("nearWKL", 0),
+            "per_change_30d": nifty_detail.get("perChange30d", 0),
+            "per_change_365d": nifty_detail.get("perChange365d", 0),
+            "advances": nifty_detail.get("advances", 0),
+            "declines": nifty_detail.get("declines", 0),
+            "unchanged": nifty_detail.get("unchanged", 0),
+            "pe": nifty_detail.get("pe", 0),
+            "pb": nifty_detail.get("pb", 0),
         }
     except Exception as e:
         print(f"[PreMarket] NSE market status error: {e}")
@@ -106,49 +142,30 @@ def get_global_indices():
 
 
 def get_nifty_futures_ohlc():
-    """Fetch Nifty futures data from NSE."""
-    try:
-        session = _get_nse_session()
-        url = f"{NSE_BASE}/api/quote-derivative?symbol=NIFTY"
-        resp = session.get(url, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-
-        fut_data = data.get("futures", [])
-        if fut_data:
-            nearest = min(fut_data, key=lambda x: x.get("expiryDate", "9999-12-31"))
-            return {
-                "last_price": round(float(nearest.get("lastPrice", 0)), 2),
-                "open": round(float(nearest.get("openPrice", 0)), 2),
-                "high": round(float(nearest.get("highPrice", 0)), 2),
-                "low": round(float(nearest.get("lowPrice", 0)), 2),
-                "prev_close": round(float(nearest.get("prevClose", 0)), 2),
-                "volume": nearest.get("numberOfContractsTraded", 0),
-                "oi": nearest.get("openInterest", 0),
-                "change": round(float(nearest.get("change", 0)), 2),
-                "change_percent": round(float(nearest.get("pChange", 0)), 2),
-                "expiry": nearest.get("expiryDate", ""),
-            }
-    except Exception as e:
-        print(f"[PreMarket] Nifty futures error: {e}")
+    """Fetch Nifty futures data from NSE.
+    NOTE: NSE deprecated /api/quote-derivative in 2026. Returns None.
+    """
+    # NSE deprecated this endpoint. Futures data now requires broker API or paid data feed.
+    # Returning None lets upstream code fall back to spot + estimated basis.
     return None
 
 
 def get_advances_declines():
-    """Fetch Nifty 50 advances/declines from NSE."""
+    """Fetch Nifty 50 advances/declines from working NSE endpoint."""
     try:
         session = _get_nse_session()
-        url = f"{NSE_BASE}/api/equity-stockIndices?index=NIFTY%2050"
+        url = f"{NSE_BASE}/api/allIndices"
         resp = session.get(url, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-        advance = data.get("advance", {})
-        if advance:
-            return {
-                "advances": advance.get("advances", 0),
-                "declines": advance.get("declines", 0),
-                "unchanged": advance.get("unchanged", 0),
-            }
+
+        for item in data.get("data", []):
+            if item.get("index") == "NIFTY 50":
+                return {
+                    "advances": item.get("advances", 0),
+                    "declines": item.get("declines", 0),
+                    "unchanged": item.get("unchanged", 0),
+                }
     except Exception as e:
         print(f"[PreMarket] A/D error: {e}")
     return None
@@ -188,8 +205,6 @@ def get_india_vix():
 def get_usdinr():
     """Fetch USD/INR from Yahoo Finance."""
     try:
-        # Yahoo's USDINR=X seems to have odd values, try a different approach
-        # Use NSE API for USDINR if possible, otherwise skip
         ticker = yf.Ticker("USDINR=X")
         info = ticker.info
         price = info.get("regularMarketPrice")
@@ -221,15 +236,17 @@ def get_fii_dii_data():
         resp.raise_for_status()
         data = resp.json()
         if data and len(data) > 0:
-            latest = data[0]
+            # Find FII and DII entries
+            fii = next((x for x in data if "FII" in x.get("category", "")), None)
+            dii = next((x for x in data if "DII" in x.get("category", "")), None)
             return {
-                "fii_buy": latest.get("fiiBuy", 0),
-                "fii_sell": latest.get("fiiSell", 0),
-                "fii_net": latest.get("fiiNet", 0),
-                "dii_buy": latest.get("diiBuy", 0),
-                "dii_sell": latest.get("diiSell", 0),
-                "dii_net": latest.get("diiNet", 0),
-                "date": latest.get("date", ""),
+                "fii_buy": float(fii.get("buyValue", 0)) if fii else 0,
+                "fii_sell": float(fii.get("sellValue", 0)) if fii else 0,
+                "fii_net": float(fii.get("netValue", 0)) if fii else 0,
+                "dii_buy": float(dii.get("buyValue", 0)) if dii else 0,
+                "dii_sell": float(dii.get("sellValue", 0)) if dii else 0,
+                "dii_net": float(dii.get("netValue", 0)) if dii else 0,
+                "date": fii.get("date", "") if fii else "",
             }
     except Exception as e:
         print(f"[PreMarket] FII/DII error: {e}")

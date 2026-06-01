@@ -18,38 +18,40 @@ def analyze_option_chain():
     """
     data = generate_option_chain()
 
-    if data is None:
+    if data is None or not data.get("strikes"):
         summary = get_market_summary()
+        is_open = data.get("market_open", False) if data else False
+        source_note = "NSE deprecated option chain API." if is_open else "Market closed."
         return {
-            "spot": summary.get("spot", 0),
-            "futures": summary.get("futures", 0),
-            "atm_strike": round(summary.get("spot", 22450) / 50) * 50,
+            "spot": data.get("spot", 0) if data else summary.get("spot", 0),
+            "futures": data.get("futures", 0) if data else summary.get("futures", 0),
+            "atm_strike": round((data.get("spot", 0) if data else summary.get("spot", 22450)) / 50) * 50,
             "strikes": [],
-            "resistance_wall": summary.get("resistance", 0),
-            "support_wall": summary.get("support", 0),
-            "short_resistance": summary.get("resistance", 0),
-            "short_support": summary.get("support", 0),
+            "resistance_wall": data.get("resistance", 0) if data else summary.get("resistance", 0),
+            "support_wall": data.get("support", 0) if data else summary.get("support", 0),
+            "short_resistance": data.get("resistance", 0) if data else summary.get("resistance", 0),
+            "short_support": data.get("support", 0) if data else summary.get("support", 0),
             "highest_ce_oi_strike": None,
             "highest_pe_oi_strike": None,
             "ce_writing_strikes": [],
             "pe_writing_strikes": [],
             "pcr": 1.0,
             "pcr_signal": "neutral",
-            "pcr_desc": "Option chain unavailable (market closed).",
+            "pcr_desc": f"Option chain unavailable — {source_note}",
             "vol_pcr": 1.0,
-            "max_pain": summary.get("spot", 0),
+            "max_pain": data.get("max_pain", 0) if data else summary.get("spot", 0),
             "pain_signal": "neutral",
-            "pain_desc": "Max pain unavailable (market closed).",
+            "pain_desc": f"Max pain unavailable — {source_note}",
             "basis": 0,
             "basis_signal": "neutral",
-            "basis_desc": "Futures basis unavailable (market closed).",
-            "vix": summary.get("vix", 15),
+            "basis_desc": f"Futures basis unavailable — {source_note}",
+            "vix": data.get("vix", 15) if data else summary.get("vix", 15),
             "iv_env": "moderate",
-            "iv_desc": f"VIX at {summary.get('vix', 15)}.",
-            "days_to_expiry": summary.get("days_to_expiry", 1),
-            "expiry_date": "",
-            "timestamp": summary.get("timestamp", ""),
-            "market_open": False,
+            "iv_desc": f"VIX at {data.get('vix', 15) if data else summary.get('vix', 15)}. {source_note}",
+            "days_to_expiry": data.get("days_to_expiry", 1) if data else summary.get("days_to_expiry", 1),
+            "expiry_date": data.get("expiry_date", "") if data else "",
+            "timestamp": data.get("timestamp", "") if data else summary.get("timestamp", ""),
+            "market_open": is_open,
             "iv_analysis": None,
             "delta_analysis": None,
         }

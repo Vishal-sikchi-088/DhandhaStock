@@ -23,6 +23,10 @@ def generate_option_chain():
     Fetch live option chain from NSE India.
     Returns None when market is closed or NSE is unreachable.
     Cached for {_OPTION_CHAIN_TTL}s to reduce API load.
+
+    NOTE (Jun 2026): NSE deprecated option-chain-indices API.
+    This now returns Yahoo Finance spot data with empty strikes
+    when market is open but NSE option chain is unavailable.
     """
     global _OPTION_CHAIN_CACHE
     now = time.time()
@@ -31,7 +35,7 @@ def generate_option_chain():
 
     try:
         live_data = fetch_live_market_data()
-        if live_data is not None and live_data.get("data_source") == "NSE_LIVE":
+        if live_data is not None:
             _OPTION_CHAIN_CACHE = {"data": live_data, "ts": now}
             return live_data
     except Exception as e:
@@ -87,7 +91,8 @@ def get_market_summary():
     if is_open:
         # Market is open - try to get option chain too
         chain = generate_option_chain()
-        if chain:
+        if chain and chain.get("strikes"):
+            # Full option chain available
             spot = chain.get("spot", 0)
             futures_price = chain.get("futures", 0) or (futures.get("last_price") if futures else spot)
             pcr = chain.get("pcr_oi", 1.0)
@@ -116,6 +121,48 @@ def get_market_summary():
                 "resistance": chain.get("resistance", 0),
                 "timestamp": chain.get("timestamp", datetime.now().isoformat()),
                 "data_source": "LIVE",
+                "market_open": True,
+                "premarket": {k: v for k, v in premarket.items() if not k.startswith("historical_")},
+                "chart": chart,
+                "news": news,
+                "news_analysis": news_analysis,
+                "narrative": narrative,
+            }
+        else:
+            # Market is open but NSE option chain API unavailable
+            last = market_status.get("last_price", 0) if market_status else 0
+            futures_price = futures.get("last_price") if futures else narrative.get("estimated_open", last)
+
+            tech_bias = chart.get("bias", "neutral") if chart else "neutral"
+            news_label = news_analysis.get("label", "neutral")
+            gap_type = narrative.get("gap_type", "flat_to_mild")
+
+            if "bullish" in tech_bias and news_label in ["positive", "neutral"]:
+                trend = "bullish"
+            elif "bearish" in tech_bias and news_label in ["negative", "neutral"]:
+                trend = "bearish"
+            elif tech_bias == "neutral":
+                trend = "sideways"
+            else:
+                trend = "neutral"
+
+            trend_reason = f"Market is OPEN. NSE option chain API deprecated. Using technical bias ({tech_bias}) and news ({news_label})."
+
+            return {
+                "trend": trend,
+                "trend_reason": trend_reason,
+                "spot": last,
+                "futures": futures_price,
+                "change_spot": market_status.get("change", 0) if market_status else 0,
+                "change_percent": market_status.get("change_percent", 0) if market_status else 0,
+                "pcr": None,
+                "vix": vix.get("current") if vix else 15,
+                "days_to_expiry": None,
+                "max_pain": None,
+                "support": narrative.get("supports", [0])[0] if narrative.get("supports") else (chart.get("key_levels", [])[0].get("price") if chart and chart.get("key_levels") else last - 200),
+                "resistance": narrative.get("resistances", [0])[0] if narrative.get("resistances") else (chart.get("key_levels", [])[-1].get("price") if chart and chart.get("key_levels") else last + 200),
+                "timestamp": datetime.now().isoformat(),
+                "data_source": "NSE_API_LIMITED",
                 "market_open": True,
                 "premarket": {k: v for k, v in premarket.items() if not k.startswith("historical_")},
                 "chart": chart,

@@ -240,7 +240,9 @@ def api_volume_profile():
 def api_deep_oi():
     analysis = analyze_option_chain()
     if analysis and analysis.get("market_open"):
-        return jsonify(analyze_deep_oi(analysis))
+        if analysis.get("strikes"):
+            return jsonify(analyze_deep_oi(analysis))
+        return jsonify({"error": "NSE deprecated option chain API", "market_open": True, "nse_api_limited": True})
     return jsonify({"error": "Option chain unavailable — market may be closed", "market_open": False})
 
 
