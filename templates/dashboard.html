@@ -3,107 +3,362 @@
 {% block content %}
 <div class="dashboard">
 
-    <!-- 1. STATUS BAR -->
+    <!-- STATUS BAR -->
     <div class="status-bar" id="marketStatusBanner">
-        <span class="status-dot" id="statusDot"></span>
-        <span class="status-text" id="marketStatusText">Checking market status...</span>
-        <span class="status-time" id="lastUpdated">--:--</span>
-    </div>
-
-    <!-- 2. HERO STATS -->
-    <div class="hero-row">
-        <div class="hero-card primary">
-            <span class="hero-label">NIFTY 50</span>
-            <span class="hero-value" id="spotPrice">--</span>
-            <span class="hero-change" id="spotChange">--</span>
+        <div class="status-left">
+            <span class="status-dot" id="statusDot"></span>
+            <span class="status-text" id="marketStatusText">Checking market...</span>
         </div>
-        <div class="hero-card">
-            <span class="hero-label">VIX</span>
-            <span class="hero-value" id="vixValue">--</span>
-        </div>
-        <div class="hero-card">
-            <span class="hero-label">PCR</span>
-            <span class="hero-value" id="pcrValue">--</span>
-        </div>
-        <div class="hero-card">
-            <span class="hero-label">Max Pain</span>
-            <span class="hero-value" id="maxPainValue">--</span>
-        </div>
-        <div class="hero-card">
-            <span class="hero-label">DTE</span>
-            <span class="hero-value" id="dteValue">--</span>
-        </div>
-        <div class="hero-card">
-            <span class="hero-label">Futures</span>
-            <span class="hero-value" id="futuresPrice">--</span>
+        <div class="status-right">
+            <span class="status-phase" id="sessionPhase">--</span>
+            <span class="status-exit" id="timeToExit"></span>
+            <span class="status-time" id="lastUpdated">--:--</span>
         </div>
     </div>
 
-    <!-- 3. DECISION CARD (Center Stage) -->
-    <div class="decision-card" id="decisionCard">
-        <div class="decision-header">
-            <div class="decision-bias" id="marketBiasValue">--</div>
-            <div class="decision-confidence">
-                <span class="conf-label">Confidence</span>
-                <span class="conf-value" id="marketBiasConfidence">--%</span>
+    <!-- EVENT RISK BANNER (shown only when event) -->
+    <div class="event-banner" id="eventBanner" style="display:none">
+        <span class="event-icon">⚠</span>
+        <span class="event-text" id="eventBannerText"></span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         ACTION CARD — THE MAIN TRADE SIGNAL (TOP OF PAGE)
+    ═══════════════════════════════════════════════════════ -->
+    <div class="action-card" id="actionCard">
+
+        <!-- Card header: bias + confidence + grade + DTE -->
+        <div class="ac-top-bar">
+            <div class="ac-signal-meta">
+                <span class="ac-signal-type" id="signalType">ANALYZING...</span>
+                <span class="ac-time" id="signalTime">--</span>
             </div>
-            <div class="decision-grade" id="qualityGrade">--</div>
-        </div>
-
-        <div class="decision-verdict" id="decisionVerdict">
-            <div class="verdict-badge" id="verdictBadge">ANALYZING...</div>
-            <div class="verdict-prob">
-                <div class="prob-bar-bg"><div class="prob-bar-fill" id="probabilityBarFill" style="width:0%"></div></div>
-                <span class="prob-label" id="probabilityBarLabel">0%</span>
-            </div>
-        </div>
-
-        <div class="decision-body" id="tradeDetailsBody">
-            <div class="trade-grid" id="tradeGrid">
-                <div class="tg-row"><span class="tg-label">Instrument</span><span class="tg-value" id="tradeInstrument">--</span></div>
-                <div class="tg-row"><span class="tg-label">Type</span><span class="tg-value" id="tradeType">--</span></div>
-                <div class="tg-row"><span class="tg-label">Strike</span><span class="tg-value" id="tradeStrike">--</span></div>
-                <div class="tg-row"><span class="tg-label">Entry</span><span class="tg-value" id="tradeEntry">--</span></div>
-                <div class="tg-row"><span class="tg-label">Stop Loss</span><span class="tg-value danger" id="tradeStop">--</span></div>
-                <div class="tg-row"><span class="tg-label">Target 1</span><span class="tg-value success" id="tradeTarget1">--</span></div>
-                <div class="tg-row"><span class="tg-label">Target 2</span><span class="tg-value success" id="tradeTarget2">--</span></div>
-                <div class="tg-row"><span class="tg-label">R:R</span><span class="tg-value" id="tradeRR">--</span></div>
-                <div class="tg-row"><span class="tg-label">Probability</span><span class="tg-value" id="tradeProb">--</span></div>
-                <div class="tg-row"><span class="tg-label">Qty</span><span class="tg-value" id="tradeQuantity">--</span></div>
-            </div>
-
-            <div class="decision-summary" id="summaryLine"></div>
-
-            <div class="decision-actions" id="tradeActions">
-                <button class="btn-primary" id="btnSaveTrade">Save Trade</button>
-                <button class="btn-secondary" id="btnActivateTrade">Activate Monitor</button>
+            <div class="ac-header-right">
+                <span class="ac-grade" id="actionGrade">--</span>
+                <span class="ac-dte" id="actionDte">-- DTE</span>
             </div>
         </div>
 
-        <div class="no-trade-message" id="noTradeMessage" style="display:none;">
-            <div class="no-trade-icon">⛔</div>
-            <div class="no-trade-title">NO TRADE</div>
-            <div class="no-trade-reason" id="noTradeReason">Edge not present. Market conditions do not meet minimum threshold.</div>
+        <!-- Bias bar -->
+        <div class="ac-bias-bar" id="biasBanner">
+            <span class="ac-bias-label" id="biasBannerText">ANALYZING</span>
+            <div class="ac-conf-wrap">
+                <div class="ac-conf-bar-bg"><div class="ac-conf-bar-fill" id="confBarFill" style="width:0%"></div></div>
+                <span class="ac-conf-pct" id="confPct">0%</span>
+            </div>
+        </div>
+
+        <!-- TRADE SECTION (visible when has_signal) -->
+        <div id="tradeSection" style="display:none">
+
+            <!-- Instrument block -->
+            <div class="ac-instrument">
+                <div class="ac-action-verb" id="tradeVerb">BUY</div>
+                <div class="ac-instrument-name" id="tradeInstrumentName">NIFTY -- --</div>
+                <div class="ac-expiry-line" id="tradeExpiry">-- (Weekly · -- DTE)</div>
+            </div>
+
+            <!-- Premium levels grid -->
+            <div class="ac-levels-grid">
+                <div class="ac-level-box entry-box">
+                    <span class="acl-label">Entry Zone</span>
+                    <span class="acl-value" id="entryRange">₹-- – ₹--</span>
+                    <span class="acl-sub">Limit order</span>
+                </div>
+                <div class="ac-level-box sl-box">
+                    <span class="acl-label">Stop Loss</span>
+                    <span class="acl-value" id="slPremium">₹--</span>
+                    <span class="acl-sub">Set as GTT</span>
+                </div>
+                <div class="ac-level-box t1-box">
+                    <span class="acl-label">Target 1</span>
+                    <span class="acl-value" id="t1Premium">₹--</span>
+                    <span class="acl-sub">Book 50%</span>
+                </div>
+                <div class="ac-level-box t2-box">
+                    <span class="acl-label">Target 2</span>
+                    <span class="acl-value" id="t2Premium">₹--</span>
+                    <span class="acl-sub">Exit rest</span>
+                </div>
+            </div>
+
+            <!-- Risk summary bar -->
+            <div class="ac-risk-bar">
+                <div class="ac-risk-item">
+                    <span class="acr-label">Qty</span>
+                    <span class="acr-value" id="tradeQty">-- lots</span>
+                </div>
+                <div class="ac-risk-sep">|</div>
+                <div class="ac-risk-item">
+                    <span class="acr-label">Max Loss</span>
+                    <span class="acr-value danger" id="tradeLoss">₹--</span>
+                </div>
+                <div class="ac-risk-sep">|</div>
+                <div class="ac-risk-item">
+                    <span class="acr-label">R:R</span>
+                    <span class="acr-value success" id="tradeRR">1:--</span>
+                </div>
+                <div class="ac-risk-sep">|</div>
+                <div class="ac-risk-item">
+                    <span class="acr-label">Exit by</span>
+                    <span class="acr-value amber" id="exitBy">12:30 PM</span>
+                </div>
+            </div>
+
+            <!-- Why section -->
+            <div class="ac-why-section">
+                <div class="ac-why-header">WHY THIS TRADE</div>
+                <div class="ac-why-list" id="whyList"></div>
+            </div>
+
+            <!-- Risk flags -->
+            <div class="ac-risk-flags" id="riskFlagsSection" style="display:none">
+                <div class="ac-rf-header">⚠ Risk Flags</div>
+                <div class="ac-rf-list" id="riskFlagsList"></div>
+            </div>
+
+            <!-- Groww steps (collapsible) -->
+            <div class="ac-groww-section">
+                <button class="ac-groww-toggle" id="growwToggle" onclick="toggleGroww()">
+                    How to execute on Groww ▼
+                </button>
+                <div class="ac-groww-steps" id="growwSteps" style="display:none">
+                    <ol id="growwStepsList"></ol>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="ac-action-buttons">
+                <button class="btn-activate" id="btnActivateTrade">Activate Monitor</button>
+                <button class="btn-save" id="btnSaveTrade">Save to History</button>
+            </div>
+
+        </div><!-- /tradeSection -->
+
+        <!-- NO TRADE / PENDING SECTION -->
+        <div id="noTradeSection" style="display:none">
+            <div class="nt-icon" id="ntIcon">⏳</div>
+            <div class="nt-title" id="ntTitle">WAIT</div>
+            <div class="nt-reason" id="ntReason">Analysing market conditions...</div>
+
+            <!-- Pending signal preview (shown when setup exists but entry window not open) -->
+            <div class="nt-pending" id="pendingPreview" style="display:none">
+                <div class="nt-pending-label">Setup in view — wait for entry window (9:30 AM)</div>
+                <div class="nt-pending-content" id="pendingContent"></div>
+            </div>
+
+            <!-- Why list for no trade -->
+            <div class="ac-why-list" id="noTradeWhyList" style="margin-top:1rem"></div>
+        </div>
+
+    </div><!-- /action-card -->
+
+    <!-- QUICK STATS ROW -->
+    <div class="stats-row">
+        <div class="stat-card primary">
+            <span class="stat-label">NIFTY 50</span>
+            <span class="stat-value" id="spotPrice">--</span>
+            <span class="stat-change" id="spotChange">--</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">VIX</span>
+            <span class="stat-value" id="vixValue">--</span>
+            <span class="stat-sub" id="vixVerdict">--</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">FII Net</span>
+            <span class="stat-value" id="fiiNetStat">--</span>
+            <span class="stat-sub" id="fiiVerdict">--</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Gap</span>
+            <span class="stat-value" id="gapValue">--</span>
+            <span class="stat-sub" id="gapType">--</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">DTE</span>
+            <span class="stat-value" id="dteValue">--</span>
+            <span class="stat-sub" id="expiryDate">--</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">PCR</span>
+            <span class="stat-value" id="pcrValue">--</span>
+            <span class="stat-sub" id="maxPainStat">MP: --</span>
         </div>
     </div>
 
-    <!-- 4. SIGNAL PILLS -->
+    <!-- SIGNAL PILLS -->
     <div class="signals-row">
         <div class="signal-pill" id="trendPill"><span class="sp-label">Trend</span><span class="sp-value" id="trendBadge">--</span></div>
         <div class="signal-pill" id="chartPill"><span class="sp-label">Chart</span><span class="sp-value" id="chartBiasBadge">--</span></div>
         <div class="signal-pill" id="smcPill"><span class="sp-label">SMC</span><span class="sp-value" id="smcBadge">--</span></div>
         <div class="signal-pill" id="oiPill"><span class="sp-label">OI</span><span class="sp-value" id="oiBadge">--</span></div>
         <div class="signal-pill" id="flowPill"><span class="sp-label">Flow</span><span class="sp-value" id="flowBadge">--</span></div>
-        <div class="signal-pill" id="vwapPill"><span class="sp-label">VWAP</span><span class="sp-value" id="vwapValuePill">--</span></div>
+        <div class="signal-pill" id="orbPill"><span class="sp-label">ORB</span><span class="sp-value" id="orbBadge">--</span></div>
     </div>
 
-    <!-- 5. OPTION CHAIN -->
+    <!-- MORNING BRIEF (collapsible) -->
+    <div class="panel morning-panel">
+        <div class="panel-header" onclick="togglePanel('morningBriefBody', this)">
+            <h2>Morning Brief</h2>
+            <span class="morning-bias-badge" id="morningBiasBadge">--</span>
+            <button class="panel-toggle">▼</button>
+        </div>
+        <div class="panel-body" id="morningBriefBody" style="display:none">
+            <div class="morning-grid">
+                <div class="morning-block">
+                    <div class="mb-title">Global Cues</div>
+                    <div class="mb-line" id="mbUsMarkets">US: --</div>
+                    <div class="mb-line" id="mbAsianMarkets">Asia: --</div>
+                    <div class="mb-line" id="mbGold">Gold: --</div>
+                    <div class="mb-line" id="mbCrude">Crude: --</div>
+                </div>
+                <div class="morning-block">
+                    <div class="mb-title">VIX</div>
+                    <div class="mb-verdict" id="mbVixVerdict">--</div>
+                </div>
+                <div class="morning-block">
+                    <div class="mb-title">FII/DII</div>
+                    <div class="mb-verdict" id="mbFiiVerdict">--</div>
+                    <div class="mb-line" id="mbFiiLine">--</div>
+                </div>
+                <div class="morning-block">
+                    <div class="mb-title">Key Levels</div>
+                    <div class="mb-line" id="mbSupports">Support: --</div>
+                    <div class="mb-line" id="mbResistances">Resistance: --</div>
+                </div>
+            </div>
+            <div class="morning-scenarios" id="morningScenarios"></div>
+            <div class="morning-tip" id="morningTip"></div>
+        </div>
+    </div>
+
+    <!-- ANALYSIS PANELS (compact, collapsible) -->
+    <div class="analysis-grid">
+
+        <!-- Chart Analysis -->
+        <div class="analysis-card">
+            <div class="ac-header" onclick="togglePanel('chartDetails', this)">
+                <h3>Chart Analysis</h3>
+                <div class="ac-quick-stats">
+                    <span class="acs-pill" id="dailyTrend">Daily: --</span>
+                    <span class="acs-pill" id="rsiValue">RSI: --</span>
+                </div>
+                <button class="ac-toggle">▼</button>
+            </div>
+            <div class="ac-details" id="chartDetails" style="display:none">
+                <div class="ac-sub">
+                    <div class="tf-grid">
+                        <div><span class="tf-label">Daily</span><span class="tf-val" id="tfDaily">--</span></div>
+                        <div><span class="tf-label">60m</span><span class="tf-val" id="tf60m">--</span></div>
+                        <div><span class="tf-label">15m</span><span class="tf-val" id="tf15m">--</span></div>
+                        <div><span class="tf-label">5m</span><span class="tf-val" id="tf5m">--</span></div>
+                    </div>
+                </div>
+                <div class="ac-sub"><h4>Key Levels</h4><div id="levelsList">--</div></div>
+                <div class="ac-sub"><h4>Patterns</h4><div id="patternsList">--</div></div>
+            </div>
+        </div>
+
+        <!-- SMC / ICT -->
+        <div class="analysis-card">
+            <div class="ac-header" onclick="togglePanel('smcDetails', this)">
+                <h3>SMC / ICT</h3>
+                <div class="ac-quick-stats">
+                    <span class="acs-pill" id="smcStructure">--</span>
+                </div>
+                <button class="ac-toggle">▼</button>
+            </div>
+            <div class="ac-details" id="smcDetails" style="display:none">
+                <div class="ac-stats">
+                    <div><span class="acs-label">Last BOS</span><span class="acs-value" id="smcBos">--</span></div>
+                    <div><span class="acs-label">Last CHoCH</span><span class="acs-value" id="smcChoch">--</span></div>
+                </div>
+                <div class="ac-sub"><h4>Order Blocks</h4><div id="smcObList">--</div></div>
+                <div class="ac-sub"><h4>FVGs</h4><div id="smcFvgList">--</div></div>
+            </div>
+        </div>
+
+        <!-- Institutional Flow -->
+        <div class="analysis-card">
+            <div class="ac-header" onclick="togglePanel('flowDetails', this)">
+                <h3>Institutional Flow</h3>
+                <div class="ac-quick-stats">
+                    <span class="acs-pill" id="flowBadgeInner">--</span>
+                </div>
+                <button class="ac-toggle">▼</button>
+            </div>
+            <div class="ac-details" id="flowDetails" style="display:none">
+                <div class="ac-stats">
+                    <div><span class="acs-label">FII Net</span><span class="acs-value" id="fiiNet">--</span></div>
+                    <div><span class="acs-label">DII Net</span><span class="acs-value" id="diiNet">--</span></div>
+                    <div><span class="acs-label">Futures</span><span class="acs-value" id="futuresFlow">--</span></div>
+                </div>
+                <div class="ac-sub"><h4>Analysis</h4><div id="flowReasons">--</div></div>
+            </div>
+        </div>
+
+        <!-- VWAP & Volume -->
+        <div class="analysis-card">
+            <div class="ac-header" onclick="togglePanel('vwapDetails', this)">
+                <h3>VWAP & Volume</h3>
+                <div class="ac-quick-stats">
+                    <span class="acs-pill" id="vwapPill">--</span>
+                </div>
+                <button class="ac-toggle">▼</button>
+            </div>
+            <div class="ac-details" id="vwapDetails" style="display:none">
+                <div class="ac-stats">
+                    <div><span class="acs-label">VWAP</span><span class="acs-value" id="vwapValue">--</span></div>
+                    <div><span class="acs-label">POC</span><span class="acs-value" id="vwapPoc">--</span></div>
+                    <div><span class="acs-label">VAH/VAL</span><span class="acs-value" id="vwapVahVal">--</span></div>
+                </div>
+                <div class="ac-sub"><h4>Signals</h4><div id="vwapSignals">--</div></div>
+            </div>
+        </div>
+
+        <!-- Deep OI -->
+        <div class="analysis-card">
+            <div class="ac-header" onclick="togglePanel('oiDetails', this)">
+                <h3>Deep OI</h3>
+                <div class="ac-quick-stats">
+                    <span class="acs-pill" id="oiBadgeInner">--</span>
+                </div>
+                <button class="ac-toggle">▼</button>
+            </div>
+            <div class="ac-details" id="oiDetails" style="display:none">
+                <div class="ac-stats">
+                    <div><span class="acs-label">Support Wall</span><span class="acs-value" id="oiSupportWall">--</span></div>
+                    <div><span class="acs-label">Resistance Wall</span><span class="acs-value" id="oiResistanceWall">--</span></div>
+                </div>
+                <div class="ac-sub"><h4>OI Buildup</h4><div id="oiBuildupList">--</div></div>
+            </div>
+        </div>
+
+        <!-- Probability -->
+        <div class="analysis-card">
+            <div class="ac-header" onclick="togglePanel('probDetails', this)">
+                <h3>Probability Breakdown</h3>
+                <div class="ac-quick-stats">
+                    <span class="acs-pill" id="probPill">--</span>
+                </div>
+                <button class="ac-toggle">▼</button>
+            </div>
+            <div class="ac-details" id="probDetails" style="display:none">
+                <div class="ac-sub" id="probabilityGrid">--</div>
+            </div>
+        </div>
+
+    </div><!-- /analysis-grid -->
+
+    <!-- OPTION CHAIN (compact) -->
     <div class="panel chain-panel">
-        <div class="panel-header">
+        <div class="panel-header" onclick="togglePanel('chainBody', this)">
             <h2>Option Chain</h2>
             <span class="badge atm-badge" id="atmBadge">ATM: --</span>
+            <button class="panel-toggle">▼</button>
         </div>
-        <div class="panel-body" style="padding:0.3rem;">
+        <div class="panel-body" id="chainBody" style="display:none">
             <div class="table-scroll">
                 <table class="option-table" id="optionTable">
                     <thead>
@@ -113,135 +368,22 @@
                             <th colspan="5" class="header-pe">PUTS (PE)</th>
                         </tr>
                         <tr>
-                            <th>OI</th><th>Chg OI</th><th>Vol</th><th>IV</th><th>Prem</th>
+                            <th>OI</th><th>ΔOI</th><th>Vol</th><th>IV</th><th>Prem</th>
                             <th class="strike-col"></th>
-                            <th>Prem</th><th>IV</th><th>Vol</th><th>Chg OI</th><th>OI</th>
+                            <th>Prem</th><th>IV</th><th>Vol</th><th>ΔOI</th><th>OI</th>
                         </tr>
                     </thead>
                     <tbody id="optionTableBody"><tr><td colspan="11" class="text-center">Loading...</td></tbody>
                 </table>
             </div>
-            <div class="chain-note" id="chainNote" style="display:none;">Option chain unavailable — market closed.</div>
+            <div class="chain-note" id="chainNote" style="display:none;"></div>
         </div>
     </div>
 
-    <!-- 6. COMPACT ANALYSIS CARDS -->
-    <div class="analysis-grid">
-        <!-- SMC Card -->
-        <div class="analysis-card" id="smcCard">
-            <div class="ac-header">
-                <h3>SMC / ICT</h3>
-                <button class="ac-toggle" data-target="smcDetails">▼</button>
-            </div>
-            <div class="ac-body">
-                <div class="ac-stats">
-                    <div><span class="acs-label">Structure</span><span class="acs-value" id="smcStructure">--</span></div>
-                    <div><span class="acs-label">Last BOS</span><span class="acs-value" id="smcBos">--</span></div>
-                    <div><span class="acs-label">Last CHoCH</span><span class="acs-value" id="smcChoch">--</span></div>
-                </div>
-                <div class="ac-details" id="smcDetails" style="display:none;">
-                    <div class="ac-sub"><h4>Order Blocks</h4><div id="smcObList">--</div></div>
-                    <div class="ac-sub"><h4>FVGs</h4><div id="smcFvgList">--</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- VWAP Card -->
-        <div class="analysis-card" id="vwapCard">
-            <div class="ac-header">
-                <h3>VWAP & Volume</h3>
-                <button class="ac-toggle" data-target="vwapDetails">▼</button>
-            </div>
-            <div class="ac-body">
-                <div class="ac-stats">
-                    <div><span class="acs-label">VWAP</span><span class="acs-value" id="vwapValue">--</span></div>
-                    <div><span class="acs-label">POC</span><span class="acs-value" id="vwapPoc">--</span></div>
-                    <div><span class="acs-label">VAH / VAL</span><span class="acs-value" id="vwapVahVal">--</span></div>
-                </div>
-                <div class="ac-details" id="vwapDetails" style="display:none;">
-                    <div class="ac-sub"><h4>Signals</h4><div id="vwapSignals">--</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- OI Card -->
-        <div class="analysis-card" id="oiCard">
-            <div class="ac-header">
-                <h3>Deep OI</h3>
-                <button class="ac-toggle" data-target="oiDetails">▼</button>
-            </div>
-            <div class="ac-body">
-                <div class="ac-stats">
-                    <div><span class="acs-label">Bias</span><span class="acs-value" id="oiBias">--</span></div>
-                    <div><span class="acs-label">Support</span><span class="acs-value" id="oiSupportWall">--</span></div>
-                    <div><span class="acs-label">Resistance</span><span class="acs-value" id="oiResistanceWall">--</span></div>
-                </div>
-                <div class="ac-details" id="oiDetails" style="display:none;">
-                    <div class="ac-sub"><h4>Buildup</h4><div id="oiBuildupList">--</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Flow Card -->
-        <div class="analysis-card" id="flowCard">
-            <div class="ac-header">
-                <h3>Institutional Flow</h3>
-                <button class="ac-toggle" data-target="flowDetails">▼</button>
-            </div>
-            <div class="ac-body">
-                <div class="ac-stats">
-                    <div><span class="acs-label">FII Net</span><span class="acs-value" id="fiiNet">--</span></div>
-                    <div><span class="acs-label">DII Net</span><span class="acs-value" id="diiNet">--</span></div>
-                    <div><span class="acs-label">Futures</span><span class="acs-value" id="futuresFlow">--</span></div>
-                </div>
-                <div class="ac-details" id="flowDetails" style="display:none;">
-                    <div class="ac-sub"><h4>Reasons</h4><div id="flowReasons">--</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Chart Card -->
-        <div class="analysis-card" id="chartCard">
-            <div class="ac-header">
-                <h3>Chart Analysis</h3>
-                <button class="ac-toggle" data-target="chartDetails">▼</button>
-            </div>
-            <div class="ac-body">
-                <div class="ac-stats">
-                    <div><span class="acs-label">RSI</span><span class="acs-value" id="rsiValue">--</span></div>
-                    <div><span class="acs-label">SMA20</span><span class="acs-value" id="sma20Value">--</span></div>
-                    <div><span class="acs-label">MACD</span><span class="acs-value" id="macdValue">--</span></div>
-                </div>
-                <div class="ac-details" id="chartDetails" style="display:none;">
-                    <div class="ac-sub"><h4>Patterns</h4><div id="patternsList">--</div></div>
-                    <div class="ac-sub"><h4>Key Levels</h4><div id="levelsList">--</div></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Probability Card -->
-        <div class="analysis-card" id="probabilityCard">
-            <div class="ac-header">
-                <h3>Probability Breakdown</h3>
-                <button class="ac-toggle" data-target="probDetails">▼</button>
-            </div>
-            <div class="ac-body">
-                <div class="ac-stats">
-                    <div><span class="acs-label">Overall</span><span class="acs-value" id="probabilityBadgeTop">--</span></div>
-                    <div><span class="acs-label">Structure</span><span class="acs-value" id="probStructure">--</span></div>
-                    <div><span class="acs-label">OI Signal</span><span class="acs-value" id="probOI">--</span></div>
-                </div>
-                <div class="ac-details" id="probDetails" style="display:none;">
-                    <div class="ac-sub"><h4>Factor Scores</h4><div id="probabilityGrid">--</div></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 7. LIVE MONITOR BANNER -->
-    <div class="monitor-banner" id="monitorPanel" style="display:none;">
+    <!-- LIVE MONITOR -->
+    <div class="monitor-banner" id="monitorPanel" style="display:none">
         <div class="monitor-left">
-            <span class="monitor-status" id="monitorStatus">ACTIVE</span>
+            <span class="monitor-status">LIVE</span>
             <span class="monitor-pnl" id="monitorPnl">--</span>
             <span class="monitor-action" id="monitorAction">--</span>
         </div>
@@ -253,13 +395,13 @@
         </div>
     </div>
 
-    <!-- 8. NEWS STRIP -->
+    <!-- NEWS STRIP -->
     <div class="news-strip" id="newsPanel">
         <div class="news-icon">📰</div>
-        <div class="news-ticker" id="newsList">Loading news...</div>
+        <div class="news-ticker" id="newsList">Loading...</div>
     </div>
 
-</div>
+</div><!-- /dashboard -->
 {% endblock %}
 
 {% block scripts %}

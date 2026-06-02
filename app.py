@@ -13,7 +13,10 @@ app.secret_key = os.urandom(24)
 
 
 def sanitize_for_json(obj):
-    """Recursively convert numpy/pandas types to native Python types for JSON serialization."""
+    """Recursively convert numpy/pandas types to JSON-safe Python types.
+    NaN / Inf → None so JSON serialization never throws.
+    """
+    import math
     import numpy as np
     import pandas as pd
     if isinstance(obj, dict):
@@ -25,7 +28,10 @@ def sanitize_for_json(obj):
     elif isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
-        return float(obj)
+        f = float(obj)
+        return None if (math.isnan(f) or math.isinf(f)) else f
+    elif isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
     elif isinstance(obj, pd.DataFrame):
@@ -54,6 +60,8 @@ from services.probability_engine import calculate_probability
 from services.strike_selector import select_strike
 from services.strategy_selector import recommend_strategy_for_conditions
 from services.trade_monitor import monitor_active_trades
+from services.intraday_engine import generate_intraday_signal, generate_morning_brief
+from services.event_calendar import get_event_risk_summary, get_market_phase
 
 init_db()
 
@@ -400,6 +408,68 @@ def api_monitor_update():
     """Run monitoring on all active trades and return updated status."""
     results = monitor_active_trades()
     return jsonify(results)
+
+
+# ── NEW: Intraday Signal & Morning Brief ──────────────────────────────────
+
+@app.route("/api/intraday-signal")
+def api_intraday_signal():
+    """
+    Primary route for the new intraday trading tips platform.
+    Returns a complete, actionable trade signal with premium-based
+    entry/SL/target and Groww execution steps.
+    """
+    settings = get_settings()
+    premarket = get_all_premarket_data()
+    chart = analyze_chart(
+        premarket.get("historical_daily"),
+        premarket.get("historical_60m"),
+        premarket.get("historical_15m"),
+        premarket.get("historical_5m"),
+    ) if premarket else None
+    from services.institutional_flow import analyze_institutional_flow
+    flow_data = analyze_institutional_flow()
+    result = generate_intraday_signal(settings, premarket, chart, flow_data)
+    return jsonify(sanitize_for_json(result))
+
+
+@app.route("/api/morning-brief")
+def api_morning_brief():
+    """
+    Pre-market morning briefing — global cues, gap prediction,
+    VIX assessment, FII/DII, key levels, scenarios.
+    """
+    premarket = get_all_premarket_data()
+    chart = analyze_chart(
+        premarket.get("historical_daily"),
+        premarket.get("historical_60m"),
+        premarket.get("historical_15m"),
+        premarket.get("historical_5m"),
+    ) if premarket else None
+    from services.institutional_flow import analyze_institutional_flow
+    flow_data = analyze_institutional_flow()
+    vix_data = premarket.get("india_vix", {}) if premarket else {}
+    result = generate_morning_brief(premarket, chart, flow_data, vix_data)
+    return jsonify(sanitize_for_json(result))
+
+
+@app.route("/api/session-info")
+def api_session_info():
+    """Current market session phase and timing."""
+    from services.event_calendar import get_market_phase, time_to_exit_str
+    from services.option_pricer import days_to_expiry, get_next_expiry
+    phase, msg = get_market_phase()
+    dte = days_to_expiry()
+    expiry = get_next_expiry()
+    event_risk = get_event_risk_summary()
+    return jsonify({
+        "phase": phase,
+        "phase_message": msg,
+        "time_to_exit": time_to_exit_str(),
+        "dte": dte,
+        "expiry_date": expiry.strftime("%d %b %Y"),
+        "event_risk": event_risk,
+    })
 
 
 if __name__ == "__main__":

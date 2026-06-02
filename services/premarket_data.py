@@ -253,8 +253,22 @@ def get_fii_dii_data():
     return None
 
 
-def get_all_premarket_data():
-    """Aggregate all pre-market data into a single dict."""
+# ── 2-minute in-process cache — avoids parallel re-fetches from multiple API calls ──
+import time as _time
+_PREMARKET_CACHE = {"data": None, "ts": 0}
+_PREMARKET_TTL = 120  # seconds
+
+
+def get_all_premarket_data(force_refresh=False):
+    """
+    Aggregate all pre-market data into a single dict.
+    Cached for 2 minutes so that parallel API calls reuse the same fetch.
+    """
+    now = _time.time()
+    if not force_refresh and _PREMARKET_CACHE["data"] is not None:
+        if now - _PREMARKET_CACHE["ts"] < _PREMARKET_TTL:
+            return _PREMARKET_CACHE["data"]
+
     market_status = get_nse_market_status()
     global_indices = get_global_indices()
     futures = get_nifty_futures_ohlc()
@@ -267,7 +281,7 @@ def get_all_premarket_data():
     historical_15m = get_nifty_historical("5d", "15m")
     historical_5m = get_nifty_historical("5d", "5m")
 
-    return {
+    result = {
         "market_status": market_status,
         "global_indices": global_indices,
         "nifty_futures": futures,
@@ -281,3 +295,6 @@ def get_all_premarket_data():
         "historical_5m": historical_5m,
         "timestamp": datetime.now().isoformat(),
     }
+    _PREMARKET_CACHE["data"] = result
+    _PREMARKET_CACHE["ts"] = now
+    return result
